@@ -1,0 +1,58 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', '.github/workflows/codeql.yml']
+  pull_request:
+    branches: [main]
+    paths: ['src/**', '.github/workflows/codeql.yml']
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            pattern: '*.cs'
+          - language: javascript-typescript
+            pattern: '*.ts'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sin código de ese lenguaje todavía, el análisis fallaría: se omite.
+      - name: Detect sources
+        id: sources
+        run: |
+          if [ -n "$(find src -name '${{ matrix.pattern }}' -not -path '*/node_modules/*' 2>/dev/null | head -1)" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Initialize CodeQL
+        if: steps.sources.outputs.found == 'true'
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+
+      - name: Autobuild
+        if: steps.sources.outputs.found == 'true' && matrix.language == 'csharp'
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        if: steps.sources.outputs.found == 'true'
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
