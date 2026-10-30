@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+      include: scope
+
+  # Se activan cuando exista el código (FK-73, FK-74):
+  # - package-ecosystem: nuget        directory: /src/backend
+  # - package-ecosystem: npm          directory: /src/frontend
+  # - package-ecosystem: docker       directory: /src/backend
