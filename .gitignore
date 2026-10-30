@@ -1,0 +1,33 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+coverage/
+*.log
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+.pnpm-store/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.pem
+*.key
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Docker
+infra/docker/data/
