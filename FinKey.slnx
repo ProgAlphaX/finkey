@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/BuildingBlocks/BuildingBlocks.csproj" />
+    <Project Path="src/backend/Host/Host.csproj" />
+    <Project Path="src/backend/Migrator/Migrator.csproj" />
+    <Project Path="src/backend/SharedKernel/SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ArchitectureTests/ArchitectureTests.csproj" />
+  </Folder>
+</Solution>
