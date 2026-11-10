@@ -17,7 +17,7 @@ ADR-0009 define SemVer a partir de Conventional Commits: `vX.Y.Z-rc.N` en stg y 
 
 ## Decisión
 **release-please** (manifest mode, versión única para el monorepo):
-- Cada merge a `main` despliega en stg y actualiza el Release PR.
+- Cada promoción a `stg` la despliega allí (ADR-0021); `main` recibe lo aprobado desde `stg` y release-please actualiza el Release PR.
 - La versión de stg es `{versión del Release PR}-rc.{n}`.
 - **Mergear el Release PR es la aprobación para prod**: crea el tag `vX.Y.Z`, que dispara `deploy-prod.yml` en el GitHub Environment `production` (solo tags `v*`).
 - Mientras la versión sea `0.x`, `feat` sube la MINOR. La `v1.0.0` se publica al completar el MVP.
