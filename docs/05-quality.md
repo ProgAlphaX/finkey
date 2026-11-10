@@ -76,7 +76,7 @@ Decisiones de esta fase:
 | Rendimiento de la PWA | Budget de bundle en `angular.json` + Lighthouse CI | Sí, si se excede |
 | Pre-commit local | Husky + lint-staged (solo formato + lint de archivos tocados; < 10 s) | — |
 
-Ramas `dev`, `qa`, `stg` y `main` protegidas (ADR-0021): PR obligatorio en `dev` y `main`, checks en verde, historial lineal (rebase-merge, commits atómicos) y sin push directo. `qa` y `stg` solo avanzan por fast-forward desde `promote.yml`.
+Ramas `dev`, `qa`, `stg` y `main` protegidas (ADR-0021): PR obligatorio en `dev` y `main`, checks en verde, historial lineal (rebase-merge, commits atómicos) y sin push directo. `qa` y `stg` solo avanzan por fast-forward desde el job `promote` de `ci.yml`.
 
 ---
 

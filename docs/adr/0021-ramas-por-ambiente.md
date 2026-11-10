@@ -28,7 +28,8 @@ FK-n ──PR──► dev ──(CI verde)──► qa ──(suite completa ve
 | `stg` | stg | Fast-forward desde `qa` cuando su suite está verde | Smoke tras el deploy | Automático a stg (`vX.Y.Z-rc.N`) |
 | `main` | prod | PR `stg` → `main` tras la aprobación de los 2 usuarios | release-please (Release PR) | Al mergear el Release PR: tag `vX.Y.Z` → prod |
 
-- Las promociones `dev → qa → stg` las hace el workflow `promote.yml` con `git push --ff-only`; solo ese workflow puede escribir en `qa` y `stg` (bypass de la regla de la rama). Nadie hace push directo.
+- Las promociones `dev → qa → stg` las hace el job `promote` de `ci.yml` con un push sin force (solo fast-forward) usando `GITHUB_TOKEN`. Por eso `qa` y `stg` no exigen PR: están protegidas contra force-push y borrado, con historial lineal, y por convención nadie hace push directo. Endurecer con un ruleset es una mejora posible.
+- `dev` es la rama por defecto del repositorio, para que PRs, Dependabot y los workflows partan de ella.
 - `main` conserva el flujo de ADR-0019: release-please, tag `v*` y GitHub Environment `production`.
 - El commit de release que release-please crea en `main` se sincroniza de vuelta a `dev` con un PR automático `main → dev`.
 - Dependabot apunta a `dev`.
