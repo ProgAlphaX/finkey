@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev, qa]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  fast:
+    name: Build y pruebas rápidas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build FinKey.slnx --configuration Release
+      - run: dotnet test --solution FinKey.slnx --configuration Release --no-build
+
+  commits:
+    name: Formato de commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Conventional Commits con clave de Jira
+        run: |
+          re='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .+ FK-[0-9]+$'
+          bad=0
+          for sha in $(git rev-list --no-merges "origin/${{ github.base_ref }}..HEAD"); do
+            msg=$(git log -1 --format=%s "$sha")
+            if ! [[ "$msg" =~ $re ]]; then echo "Commit inválido: $sha $msg"; bad=1; fi
+          done
+          exit $bad
+
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Suite completa: solo sobre la rama qa. Aquí se suman integración (Testcontainers),
+  # E2E, Lighthouse y Trivy a medida que existan (FK-74 en adelante).
+  full:
+    name: Suite completa (qa)
+    if: github.ref == 'refs/heads/qa'
+    needs: [fast, secrets]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test --solution FinKey.slnx --configuration Release
+
+  # Promoción por fast-forward (ADR-0021): dev -> qa y qa -> stg.
+  promote:
+    name: Promover a la siguiente rama
+    if: >-
+      always() && github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/qa') &&
+      needs.fast.result == 'success' && needs.secrets.result == 'success' &&
+      (needs.full.result == 'success' || needs.full.result == 'skipped')
+    needs: [fast, secrets, full]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Avanzar la rama destino
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then target=qa; else target=stg; fi
+          git fetch origin "$target"
+          if ! git merge-base --is-ancestor "origin/$target" "${{ github.sha }}"; then
+            echo "$target no es ancestro de ${{ github.sha }}: no se puede avanzar por fast-forward"; exit 1
+          fi
+          git push origin "${{ github.sha }}:refs/heads/$target"
+          # Un push con GITHUB_TOKEN no dispara workflows: se lanza el CI de qa a mano.
+          # Para stg, el despliegue (deploy-stg.yml) se enlaza en FK-76.
+          if [ "$target" = "qa" ]; then gh workflow run ci.yml --ref qa; fi
