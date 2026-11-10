@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>FinKey.BuildingBlocks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SharedKernel\SharedKernel.csproj" />
+  </ItemGroup>
+</Project>
