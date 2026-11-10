@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>FinKey.ArchitectureTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\backend\SharedKernel\SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\backend\BuildingBlocks\BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\backend\Host\Host.csproj" />
+    <ProjectReference Include="..\..\src\backend\Migrator\Migrator.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+</Project>
