@@ -92,7 +92,7 @@ finkey/                           # monorepo público en GitHub
 ├── .github/workflows/
 └── release-please-config.json
 ```
-- **Ramas por ambiente** (ADR-0021): `dev → qa → stg → main`. Las ramas de trabajo son cortas (< 2 días), llevan la clave de Jira (`FK-23`) y se integran por PR a `dev`. `qa` y `stg` se alimentan solo por fast-forward desde el workflow `promote.yml`; `main` es producción.
+- **Ramas por ambiente** (ADR-0021): `dev → qa → stg → main`. Las ramas de trabajo son cortas (< 2 días), llevan la clave de Jira (`FK-23`) y se integran por PR a `dev`. `qa` y `stg` se alimentan solo por fast-forward desde el job `promote` de `ci.yml`; `main` es producción.
 - PR con **rebase-merge** para conservar los commits atómicos; cada commit es un Conventional Commit con la clave al final, p. ej. `feat(ledger): add shared expense split FK-23` (lo valida commitlint); al incluir `FK-23`, el commit se enlaza en Jira (GitHub for Jira).
 - Infraestructura como código: en el MVP, **script `bootstrap.sh` idempotente + documentación**. OpenTofu (GCP + Cloudflare) queda como mejora de aprendizaje post-MVP.
 
@@ -150,8 +150,8 @@ En el PR a `dev` corren build, unitarios, arquitectura, lint, commitlint y gitle
 4. **Seguridad**: CodeQL, `dependency-review-action`, gitleaks, build de la imagen + Trivy.
 5. **Commits**: commitlint sobre los commits del PR.
 
-### 5.1b `promote.yml`
-Al terminar en verde `ci.yml` sobre `dev`, avanza `qa` a ese commit con `git push --ff-only`; al terminar en verde la suite completa sobre `qa`, avanza `stg` igual. Solo este workflow puede escribir en `qa` y `stg`. Si la rama destino no puede avanzar por fast-forward, el workflow falla y avisa. El commit de release de `main` se devuelve a `dev` con un PR automático.
+### 5.1b Job `promote` de `ci.yml`
+Al terminar en verde `ci.yml` sobre `dev`, avanza `qa` a ese commit con `git push --ff-only`; al terminar en verde la suite completa sobre `qa`, avanza `stg` igual. Ese job es el único que escribe en `qa` y `stg`. Si la rama destino no puede avanzar por fast-forward, el workflow falla y avisa. El commit de release de `main` se devuelve a `dev` con un PR automático.
 
 ### 5.2 `deploy-stg.yml` (push a `stg`)
 1. Build de la imagen **una sola vez** → push a Artifact Registry con el tag `sha-<commit>`.
