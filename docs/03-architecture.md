@@ -364,8 +364,8 @@ Se sube un peldaño solo cuando una métrica lo pide. Las métricas salen de Ope
 ### Ambientes
 ```mermaid
 flowchart LR
-  Dev["dev<br/>máquina local<br/>Postgres en Docker"] -->|PR| QA["qa<br/>CI efímero<br/>Postgres Testcontainers"]
-  QA -->|merge a main + todos los tests en verde| STG["stg<br/>Neon finkey-stg<br/>vX.Y.Z-rc.N"]
+  Dev["dev<br/>rama de integración<br/>Postgres en Docker local"] -->|CI verde: ff| QA["qa<br/>CI efímero<br/>Postgres Testcontainers"]
+  QA -->|suite completa en verde: ff| STG["stg<br/>Neon finkey-stg<br/>vX.Y.Z-rc.N"]
   STG -->|aprobación de los 2 usuarios| PROD["prod<br/>Neon finkey-prod<br/>vX.Y.Z"]
 ```
 
@@ -373,7 +373,7 @@ flowchart LR
 |---|---|---|---|---|
 | dev | Postgres local (`docker compose`) | Semilla de desarrollo | Locales | Manual |
 | qa | Postgres efímero (Testcontainers) | Creados por cada test | Efímeras | En cada PR / push |
-| stg | Proyecto Neon `finkey-stg` | Solo los que ambos usuarios ingresan a mano (sin seed ni copia de prod; solo datos de referencia del sistema) | Propias de stg | Automático al hacer merge a `main` |
+| stg | Proyecto Neon `finkey-stg` | Solo los que ambos usuarios ingresan a mano (sin seed ni copia de prod; solo datos de referencia del sistema) | Propias de stg | Automático al promover `qa` → `stg` |
 | prod | Proyecto Neon `finkey-prod` | Reales | Propias de prod, mínimo privilegio | Al crear el tag `vX.Y.Z`, con aprobación manual |
 
 - Ningún ambiente comparte BD, credenciales ni secretos con otro.
@@ -393,7 +393,8 @@ flowchart LR
 
 ### Versionado
 - **SemVer** a partir de **Conventional Commits**: `fix:` → PATCH, `feat:` → MINOR, `BREAKING CHANGE:` → MAJOR.
-- Al hacer merge a `main` → versión candidata `vX.Y.Z-rc.N` en stg.
+- Al promover `qa` → `stg` → versión candidata `vX.Y.Z-rc.N` en stg.
+- Ramas por ambiente `dev → qa → stg → main` (ADR-0021).
 - Al aprobar → tag `vX.Y.Z`, release notes automáticas y deploy a prod.
 - Las versiones se reflejan en Jira (Releases) y la API expone su versión en `/health`.
 - El pipeline concreto está en [`06-devops.md`](06-devops.md) §5 (release-please, ADR-0019).
@@ -423,3 +424,4 @@ flowchart LR
 | [0018](adr/0018-backups-cifrados-en-r2.md) | Backups diarios cifrados con age en Cloudflare R2 | Aceptado |
 | [0019](adr/0019-releases-con-release-please.md) | Versionado y releases con release-please | Aceptado |
 | [0020](adr/0020-observabilidad-grafana-cloud.md) | Observabilidad con OpenTelemetry y Grafana Cloud | Aceptado |
+| [0021](adr/0021-ramas-por-ambiente.md) | Ramas por ambiente (dev → qa → stg → main) | Aceptado |

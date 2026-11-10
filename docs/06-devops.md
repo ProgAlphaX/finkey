@@ -92,7 +92,7 @@ finkey/                           # monorepo público en GitHub
 ├── .github/workflows/
 └── release-please-config.json
 ```
-- **Trunk-based**: `main` siempre desplegable; ramas cortas (< 2 días) con la clave de Jira: `FK-23`.
+- **Ramas por ambiente** (ADR-0021): `dev → qa → stg → main`. Las ramas de trabajo son cortas (< 2 días), llevan la clave de Jira (`FK-23`) y se integran por PR a `dev`. `qa` y `stg` se alimentan solo por fast-forward desde el workflow `promote.yml`; `main` es producción.
 - PR con **rebase-merge** para conservar los commits atómicos; cada commit es un Conventional Commit con la clave al final, p. ej. `feat(ledger): add shared expense split FK-23` (lo valida commitlint); al incluir `FK-23`, el commit se enlaza en Jira (GitHub for Jira).
 - Infraestructura como código: en el MVP, **script `bootstrap.sh` idempotente + documentación**. OpenTofu (GCP + Cloudflare) queda como mejora de aprendizaje post-MVP.
 
@@ -103,7 +103,7 @@ finkey/                           # monorepo público en GitHub
 |---|---|---|---|---|
 | Dónde | Tu PC (Docker Compose) | Runners de GitHub Actions | GCP `finkey-stg` + Cloudflare `finkey-stg` + Neon `finkey-stg` | GCP `finkey-prod` + Cloudflare `finkey` + Neon `finkey-prod` |
 | BD | Postgres 17 en Docker (seed de desarrollo) | Testcontainers efímero | Neon, **sin seed** (solo datos ingresados a mano) | Neon, datos reales |
-| Despliegue | `docker compose up` / `dotnet watch` + `ng serve` | Cada PR | Automático en cada merge a `main` | Al mergear el Release PR |
+| Despliegue | `docker compose up` / `dotnet watch` + `ng serve` | Cada PR | Automático al promover `qa` → `stg` | Al mergear el Release PR en `main` |
 | Versión | `0.0.0-dev` | `sha` | `vX.Y.Z-rc.N` | `vX.Y.Z` |
 | Cloud Run | — | — | max 1 instancia | max 2 instancias |
 | Jobs | Manual (`POST /jobs/...` con el token de dev) | En los tests | GitHub Actions `schedule` (± minutos de demora, aceptable) | Cloud Scheduler (zona America/Lima, OIDC) |
@@ -120,16 +120,19 @@ Configuración de Cloud Run (ambos ambientes):
 ## 5. Pipeline CI/CD (GitHub Actions)
 ```mermaid
 flowchart LR
-  PR[Pull Request] --> CI{ci.yml<br/>qa}
-  CI -->|verde + review| M[merge a main]
-  M --> STG[deploy-stg.yml]
-  STG --> RP[release-please<br/>actualiza el Release PR]
+  PR[PR FK-n] --> CI{ci.yml<br/>rápido}
+  CI -->|verde| DEV[dev]
+  DEV -->|promote.yml ff| QA{ci.yml<br/>completo}
+  QA -->|verde| QAB[qa]
+  QAB -->|promote.yml ff| STG[stg<br/>deploy-stg.yml]
+  STG -->|aprueban los 2: PR stg → main| M[main]
+  M --> RP[release-please<br/>Release PR]
   RP -->|tú mergeas el Release PR| TAG[tag vX.Y.Z]
   TAG --> PROD[deploy-prod.yml]
 ```
 
-### 5.1 `ci.yml` (en cada PR = ambiente qa)
-Corre en paralelo:
+### 5.1 `ci.yml` (PR a `dev` = rápido; rama `qa` = completo)
+En el PR a `dev` corren build, unitarios, arquitectura, lint, commitlint y gitleaks. La suite completa (integración, E2E, Lighthouse, CodeQL, Trivy) corre sobre `qa`. Los pasos, en paralelo:
 1. **Backend**:
    - restore, CSharpier check y build con `TreatWarningsAsErrors`;
    - tests unitarios y de arquitectura;
@@ -147,7 +150,10 @@ Corre en paralelo:
 4. **Seguridad**: CodeQL, `dependency-review-action`, gitleaks, build de la imagen + Trivy.
 5. **Commits**: commitlint sobre los commits del PR.
 
-### 5.2 `deploy-stg.yml` (push a `main`)
+### 5.1b `promote.yml`
+Al terminar en verde `ci.yml` sobre `dev`, avanza `qa` a ese commit con `git push --ff-only`; al terminar en verde la suite completa sobre `qa`, avanza `stg` igual. Solo este workflow puede escribir en `qa` y `stg`. Si la rama destino no puede avanzar por fast-forward, el workflow falla y avisa. El commit de release de `main` se devuelve a `dev` con un PR automático.
+
+### 5.2 `deploy-stg.yml` (push a `stg`)
 1. Build de la imagen **una sola vez** → push a Artifact Registry con el tag `sha-<commit>`.
 2. Se calcula la versión `vX.Y.Z-rc.N`, donde `X.Y.Z` es la propuesta en el Release PR y `N` el número de ejecución, y se agrega a la imagen como label y como variable `APP_VERSION`.
 3. **Migraciones**: `FinKey.Migrator` (consola que aplica en orden las migraciones de cada `DbContext` y las políticas RLS) con el rol `finkey_owner` sobre Neon stg.

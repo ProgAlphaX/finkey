@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FinKey - Arquitectura 3D</title>
+<style>
+  :root { --bg:#0f1420; --fg:#e6e9f0; --muted:#8b93a7; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px system-ui,sans-serif; overflow:hidden; }
+  canvas { display:block; }
+  #hud { position:absolute; top:12px; left:16px; max-width:300px; pointer-events:none; }
+  #hud h1 { font-size:16px; margin:0 0 4px; }
+  #hud p { margin:0 0 8px; color:var(--muted); font-size:12px; }
+  .row { display:flex; align-items:center; gap:8px; margin:3px 0; font-size:12px; }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .line { width:16px; height:0; border-top:2px solid; flex:none; }
+  #tip { position:absolute; bottom:12px; left:16px; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h1>FinKey · mapa de carpetas</h1>
+  <p>Monolito modular, Clean Architecture por módulo.</p>
+  <div class="row"><span class="dot" style="background:#f5c542"></span>raíz</div>
+  <div class="row"><span class="dot" style="background:#4da3ff"></span>backend / módulos</div>
+  <div class="row"><span class="dot" style="background:#ff7a59"></span>frontend</div>
+  <div class="row"><span class="dot" style="background:#5fd38d"></span>capas Clean del módulo</div>
+  <div class="row"><span class="dot" style="background:#b48cff"></span>docs, tests, infra, CI</div>
+  <div class="row"><span class="line" style="border-color:#f5c542"></span>dependencia (hacia adentro)</div>
+</div>
+<div id="tip">Arrastra para rotar · rueda para zoom · clic derecho para mover</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const LAYERS = ['Domain', 'Application', 'Infrastructure', 'Api', 'Contracts'];
+const MODULES = ['Identity', 'Ledger', 'Debts', 'Planning', 'Periods', 'Reference', 'Notifications', 'Insights'];
+
+const tree = { name: 'FinKey', color: 0xf5c542, children: [
+  { name: 'src', color: 0x4da3ff, children: [
+    { name: 'backend', color: 0x4da3ff, children: [
+      { name: 'Host', color: 0x4da3ff },
+      { name: 'Modules', color: 0x4da3ff, children: MODULES.map(m => ({
+        name: m, color: 0x4da3ff, module: true,
+        children: LAYERS.map(l => ({ name: l, color: 0x5fd38d, layer: l, module: m }))
+      })) },
+      { name: 'SharedKernel', color: 0x4da3ff },
+      { name: 'BuildingBlocks', color: 0x4da3ff },
+      { name: 'Migrator', color: 0x4da3ff },
+    ] },
+    { name: 'frontend', color: 0xff7a59, children: [
+      { name: 'Angular 22 PWA', color: 0xff7a59 },
+    ] },
+  ] },
+  { name: 'tests', color: 0xb48cff, children: [
+    { name: 'Architecture', color: 0xb48cff }, { name: 'Unit', color: 0xb48cff }, { name: 'Integration', color: 0xb48cff },
+  ] },
+  { name: 'infra', color: 0xb48cff, children: [{ name: 'gcp', color: 0xb48cff }] },
+  { name: 'docs', color: 0xb48cff, children: [{ name: 'adr', color: 0xb48cff }] },
+  { name: '.github', color: 0xb48cff, children: [{ name: 'workflows', color: 0xb48cff }] },
+] };
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f1420);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 2000);
+camera.position.set(0, 60, 150);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+controls.enableDamping = true;
+
+// Direcciones repartidas en una esfera (espiral de Fibonacci)
+function fib(i, n) {
+  const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2;
+  const r = Math.sqrt(1 - y * y), t = Math.PI * (3 - Math.sqrt(5)) * i;
+  return new THREE.Vector3(Math.cos(t) * r, y, Math.sin(t) * r);
+}
+
+const RADIUS = [0, 40, 30, 26, 14, 9];
+const byKey = {};
+const nodes = [];
+
+function place(node, pos, depth, outward) {
+  node.pos = pos;
+  nodes.push(node);
+  if (node.module && node.layer) byKey[node.module + '/' + node.layer] = node;
+  const kids = node.children || [];
+  kids.forEach((k, i) => {
+    let d = fib(i, kids.length);
+    if (outward && d.dot(outward) < 0) d.negate();
+    const p = pos.clone().add(d.multiplyScalar(RADIUS[depth + 1] || 8));
+    place(k, p, depth + 1, p.clone().sub(pos).normalize());
+  });
+}
+place(tree, new THREE.Vector3(0, 0, 0), 0, null);
+
+function label(text, color) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.font = '600 28px system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#' + color.toString(16).padStart(6, '0');
+  g.fillText(text, 128, 32);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  s.scale.set(16, 4, 1);
+  return s;
+}
+
+function link(a, b, color, opacity) {
+  const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+  scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity })));
+}
+
+nodes.forEach(n => {
+  const size = n === tree ? 3 : n.module && !n.layer ? 1.8 : n.layer ? 0.9 : 1.3;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(size, 16, 16), new THREE.MeshBasicMaterial({ color: n.color }));
+  m.position.copy(n.pos);
+  scene.add(m);
+  const l = label(n.name, n.color);
+  l.position.copy(n.pos).add(new THREE.Vector3(0, size + 2, 0));
+  scene.add(l);
+  (n.children || []).forEach(k => link(n.pos, k.pos, 0x4a5570, 0.55));
+});
+
+// Dependencias hacia adentro: Api -> Application -> Domain, Infrastructure -> Application
+MODULES.forEach(m => {
+  const g = l => byKey[m + '/' + l].pos;
+  link(g('Api'), g('Application'), 0xf5c542, 0.9);
+  link(g('Infrastructure'), g('Application'), 0xf5c542, 0.9);
+  link(g('Application'), g('Domain'), 0xf5c542, 0.9);
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

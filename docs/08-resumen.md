@@ -38,7 +38,7 @@ Todo en free tiers, con presupuesto de GCP de $1 como alarma. Sin dominio propio
 **MVP en producción:** Sprint 3, hacia el **22 de diciembre de 2026** (157 h). Con una desviación de 1,5x pasaría al Sprint 4, hacia el 5 de enero de 2027.
 
 ## ADRs
-0001 Monolito modular · 0002 Clean por módulo · 0003 Ledger simplificado · 0004 Ownership y autorización · 0005 Dinero, fechas e IDs · 0006 Contratos + outbox · 0007 Jobs externos · 0008 Herramientas de diseño · 0009 Ambientes y bases aisladas · 0010 .NET 10 · 0011 PostgreSQL + EF Core + Dapper · 0012 ASP.NET Identity · 0013 Angular + CDK + Tailwind · 0014 Tipo de cambio BCRP · 0015 Sesión por cookie con proxy · 0016 RLS por hogar · 0017 Cloud Run + Cloudflare + Neon · 0018 Backups cifrados en R2 · 0019 release-please · 0020 Observabilidad en Grafana Cloud.
+0001 Monolito modular · 0002 Clean por módulo · 0003 Ledger simplificado · 0004 Ownership y autorización · 0005 Dinero, fechas e IDs · 0006 Contratos + outbox · 0007 Jobs externos · 0008 Herramientas de diseño · 0009 Ambientes y bases aisladas · 0010 .NET 10 · 0011 PostgreSQL + EF Core + Dapper · 0012 ASP.NET Identity · 0013 Angular + CDK + Tailwind · 0014 Tipo de cambio BCRP · 0015 Sesión por cookie con proxy · 0016 RLS por hogar · 0017 Cloud Run + Cloudflare + Neon · 0018 Backups cifrados en R2 · 0019 release-please · 0020 Observabilidad en Grafana Cloud · 0021 Ramas por ambiente.
 
 ## Siguiente paso
 Sprint 0, FK-67: crear el repo público en GitHub, proteger `main` y activar secret scanning, Dependabot y CodeQL. Después, el checklist de `06-devops.md` §10 hasta el primer `/health` desplegado en stg y prod.
